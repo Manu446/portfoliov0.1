@@ -1,0 +1,17 @@
+{
+  "name": "immanuel-portfolio",
+  "version": "1.0.0",
+  "description": "Immanuel Obure Web Developer Portfolio built with React and Vite",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0"
+  }
+}
