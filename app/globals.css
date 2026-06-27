@@ -1,0 +1,133 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 0 0% 100%;
+  --foreground: 240 10% 8%;
+  --primary: 190 95% 42%;
+  --primary-foreground: 0 0% 100%;
+  --accent: 330 85% 55%;
+  --accent-foreground: 0 0% 100%;
+  --muted: 240 5% 45%;
+  --muted-foreground: 240 5% 35%;
+  --card: 0 0% 100%;
+  --card-foreground: 240 10% 8%;
+  --border: 240 6% 90%;
+}
+
+@layer base {
+  * {
+    border-color: hsl(var(--border));
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  .font-display {
+    letter-spacing: -0.025em;
+  }
+
+  ::selection {
+    @apply bg-cyan-500 text-white;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #f4f4f5;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: linear-gradient(to bottom, #06b6d4, #ec4899);
+    border-radius: 9999px;
+    border: 2px solid #f4f4f5;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(to bottom, #0891b2, #db2777);
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-gradient-to-r from-cyan-500 via-sky-500 to-fuchsia-500 bg-clip-text text-transparent;
+  }
+
+  .text-gradient-warm {
+    @apply bg-gradient-to-r from-fuchsia-500 to-orange-400 bg-clip-text text-transparent;
+  }
+
+  /* Frosted light card */
+  .glass {
+    @apply bg-white/70 backdrop-blur-xl border border-zinc-200/80 shadow-[0_8px_30px_rgba(15,23,42,0.06)];
+  }
+
+  .glass-hover {
+    @apply hover:bg-white/90 hover:border-zinc-300 hover:shadow-[0_18px_50px_rgba(15,23,42,0.10)] transition-all duration-300;
+  }
+
+  .ink {
+    @apply text-zinc-900;
+  }
+
+  /* Animated gradient text fill */
+  .animate-gradient-text {
+    background-size: 200% auto;
+    animation: gradientShift 5s linear infinite;
+  }
+}
+
+/* Lenis smooth scroll */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+/* Keyframes for boosted motion */
+@keyframes gradientShift {
+  0% { background-position: 0% center; }
+  100% { background-position: 200% center; }
+}
+
+@keyframes blob {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(30px, -40px) scale(1.1); }
+  66% { transform: translate(-25px, 25px) scale(0.95); }
+}
+
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-22px); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Hide custom cursor on touch devices */
+@media (max-width: 768px) {
+  body {
+    cursor: auto !important;
+  }
+}
