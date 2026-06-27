@@ -250,9 +250,9 @@ export async function getGitHubProjects(options?: {
   liveOnly?: boolean
 }): Promise<Project[]> {
   const liveOnly = options?.liveOnly ?? false
-  const orgNames = [
-    ...new Set([...parseOrgList(), ...(await fetchPublicOrgMemberships())]),
-  ]
+  const orgNames = Array.from(
+    new Set([...parseOrgList(), ...(await fetchPublicOrgMemberships())])
+  )
 
   const [personal, affiliated, ...orgRepoLists] = await Promise.all([
     fetchPersonalRepos(),
