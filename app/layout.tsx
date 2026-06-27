@@ -9,6 +9,7 @@ import { ScrollProgress } from "@/components/animations/ScrollProgress"
 import { CursorFollower } from "@/components/animations/CursorFollower"
 import { NoiseOverlay } from "@/components/animations/NoiseOverlay"
 import { LoadingScreen } from "@/components/animations/LoadingScreen"
+import { AmbientSoundtrack } from "@/components/AmbientSoundtrack"
 
 const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -71,6 +72,7 @@ export default function RootLayout({
         <Navbar />
         <main className="relative z-10">{children}</main>
         <Footer />
+        <AmbientSoundtrack />
       </body>
     </html>
   )
