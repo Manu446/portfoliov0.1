@@ -44,6 +44,7 @@ const config: Config = {
         "marquee": "marquee 30s linear infinite",
         "shimmer": "shimmer 2.4s linear infinite",
         "gradient-text": "gradientShift 5s linear infinite",
+        "caret-blink": "caretBlink 1s steps(1) infinite",
       },
       keyframes: {
         pulseGlow: {
@@ -74,6 +75,10 @@ const config: Config = {
         gradientShift: {
           "0%": { backgroundPosition: "0% center" },
           "100%": { backgroundPosition: "200% center" },
+        },
+        caretBlink: {
+          "0%, 50%": { opacity: "1" },
+          "50.01%, 100%": { opacity: "0" },
         },
       },
     },

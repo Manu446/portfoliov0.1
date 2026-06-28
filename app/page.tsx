@@ -7,6 +7,7 @@ import { ArrowDown, Code2, Camera, Sparkles, ArrowUpRight } from "lucide-react"
 import { MagneticButton } from "@/components/ui/MagneticButton"
 import { Reveal } from "@/components/ui/Reveal"
 import { CountUp } from "@/components/ui/CountUp"
+import { Typewriter } from "@/components/ui/Typewriter"
 import { ProjectShowcase } from "@/components/ProjectShowcase"
 import { Marquee } from "@/components/Marquee"
 
@@ -149,6 +150,24 @@ export default function HomePage() {
                   accentClass="text-gradient-warm"
                 />
               </h1>
+
+              <motion.div
+                className="flex items-center gap-2 mb-6 min-h-[1.75rem] font-mono text-sm md:text-base text-zinc-500"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.7, delay: 0.8, ease: EASE }}
+              >
+                <span className="text-cyan-600">&gt;</span>
+                <Typewriter
+                  phrases={[
+                    "I build modern web experiences.",
+                    "I craft performant applications.",
+                    "I capture moments through my lens.",
+                    "I turn ideas into products.",
+                  ]}
+                  className="text-zinc-700"
+                />
+              </motion.div>
 
               <motion.p
                 className="text-zinc-600 text-lg md:text-xl leading-relaxed max-w-lg mb-10"

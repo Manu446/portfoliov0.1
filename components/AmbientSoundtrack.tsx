@@ -4,160 +4,213 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 
 const STORAGE_KEY = "portfolio-soundtrack-enabled"
-const TARGET_VOLUME = 0.22
-const FADE_MS = 1800
+const TARGET_VOLUME = 0.28
+const FADE_MS = 1200
+const BPM = 94
+const BEAT_SEC = 60 / BPM
+const BAR_BEATS = 4
 
-// Om (136.1 Hz) + solfeggio-inspired tones — warm, uplifting, spacious
-const PAD_FREQS = [136.1, 272.2, 408.3, 528, 639, 741.98]
-const PAD_GAINS = [0.055, 0.038, 0.028, 0.032, 0.022, 0.018]
+// Uplifting I–V–vi–IV loop (C major)
+const CHORDS: { notes: number[]; root: number }[] = [
+  { notes: [261.63, 329.63, 392.0], root: 130.81 },
+  { notes: [392.0, 493.88, 587.33], root: 196.0 },
+  { notes: [220.0, 261.63, 329.63], root: 110.0 },
+  { notes: [349.23, 440.0, 523.25], root: 174.61 },
+]
 
-function createReverb(ctx: AudioContext, seconds = 3.5, decay = 2.2) {
-  const length = ctx.sampleRate * seconds
-  const impulse = ctx.createBuffer(2, length, ctx.sampleRate)
-  for (let ch = 0; ch < 2; ch++) {
-    const data = impulse.getChannelData(ch)
-    for (let i = 0; i < length; i++) {
-      data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, decay)
-    }
-  }
-  const convolver = ctx.createConvolver()
-  convolver.buffer = impulse
-  return convolver
-}
+// Simple ascending motif over the progression
+const MELODY = [523.25, 587.33, 659.25, 587.33, 493.88, 440.0, 392.0, 440.0]
 
-class SpiritualEngine {
+class RhythmicEngine {
   private ctx: AudioContext | null = null
   private master: GainNode | null = null
-  private dry: GainNode | null = null
-  private wet: GainNode | null = null
-  private nodes: AudioNode[] = []
-  private lfoIntervals: ReturnType<typeof setInterval>[] = []
-  private bellTimer: ReturnType<typeof setTimeout> | null = null
+  private musicBus: GainNode | null = null
+  private timer: ReturnType<typeof setInterval> | null = null
+  private beat = 0
   private running = false
+  private startTime = 0
 
   private ensureContext() {
     if (!this.ctx) {
       this.ctx = new AudioContext()
       this.master = this.ctx.createGain()
-      this.dry = this.ctx.createGain()
-      this.wet = this.ctx.createGain()
+      this.musicBus = this.ctx.createGain()
       this.master.gain.value = 0
-      this.dry.gain.value = 0.65
-      this.wet.gain.value = 0.55
-      this.dry.connect(this.master)
-      this.wet.connect(this.master)
+      this.musicBus.gain.value = 1
+      this.musicBus.connect(this.master)
       this.master.connect(this.ctx.destination)
     }
-    return { ctx: this.ctx, master: this.master!, dry: this.dry!, wet: this.wet! }
+    return { ctx: this.ctx, master: this.master!, bus: this.musicBus! }
   }
 
-  private scheduleBell() {
-    if (!this.running || !this.ctx || !this.dry) return
-
-    const ctx = this.ctx
-    const now = ctx.currentTime
-
-    const bellFreqs = [1056, 1320, 1584, 2112]
-    const freq = bellFreqs[Math.floor(Math.random() * bellFreqs.length)]
-
+  private playKick(time: number, gain = 0.55) {
+    const { ctx, bus } = this.ensureContext()
     const osc = ctx.createOscillator()
-    const gain = ctx.createGain()
-    const filter = ctx.createBiquadFilter()
-
+    const amp = ctx.createGain()
     osc.type = "sine"
+    osc.frequency.setValueAtTime(165, time)
+    osc.frequency.exponentialRampToValueAtTime(48, time + 0.12)
+    amp.gain.setValueAtTime(0.0001, time)
+    amp.gain.exponentialRampToValueAtTime(gain, time + 0.004)
+    amp.gain.exponentialRampToValueAtTime(0.0001, time + 0.22)
+    osc.connect(amp)
+    amp.connect(bus)
+    osc.start(time)
+    osc.stop(time + 0.25)
+  }
+
+  private playSnare(time: number, gain = 0.14) {
+    const { ctx, bus } = this.ensureContext()
+    const bufferSize = ctx.sampleRate * 0.18
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate)
+    const data = buffer.getChannelData(0)
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize)
+    }
+    const noise = ctx.createBufferSource()
+    noise.buffer = buffer
+    const filter = ctx.createBiquadFilter()
+    filter.type = "highpass"
+    filter.frequency.value = 1200
+    const amp = ctx.createGain()
+    amp.gain.setValueAtTime(gain, time)
+    amp.gain.exponentialRampToValueAtTime(0.0001, time + 0.16)
+    noise.connect(filter)
+    filter.connect(amp)
+    amp.connect(bus)
+    noise.start(time)
+    noise.stop(time + 0.2)
+  }
+
+  private playHat(time: number, gain = 0.045, open = false) {
+    const { ctx, bus } = this.ensureContext()
+    const bufferSize = ctx.sampleRate * (open ? 0.12 : 0.04)
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate)
+    const data = buffer.getChannelData(0)
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize)
+    }
+    const noise = ctx.createBufferSource()
+    noise.buffer = buffer
+    const filter = ctx.createBiquadFilter()
+    filter.type = "highpass"
+    filter.frequency.value = 7000
+    const amp = ctx.createGain()
+    amp.gain.setValueAtTime(gain, time)
+    amp.gain.exponentialRampToValueAtTime(0.0001, time + (open ? 0.1 : 0.035))
+    noise.connect(filter)
+    filter.connect(amp)
+    amp.connect(bus)
+    noise.start(time)
+    noise.stop(time + 0.14)
+  }
+
+  private playBass(time: number, freq: number, duration: number, gain = 0.2) {
+    const { ctx, bus } = this.ensureContext()
+    const osc = ctx.createOscillator()
+    const filter = ctx.createBiquadFilter()
+    const amp = ctx.createGain()
+    osc.type = "triangle"
     osc.frequency.value = freq
-    filter.type = "bandpass"
-    filter.frequency.value = freq
-    filter.Q.value = 8
-
-    gain.gain.setValueAtTime(0, now)
-    gain.gain.linearRampToValueAtTime(0.018, now + 0.08)
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + 4.5)
-
+    filter.type = "lowpass"
+    filter.frequency.value = 420
+    amp.gain.setValueAtTime(0.0001, time)
+    amp.gain.linearRampToValueAtTime(gain, time + 0.02)
+    amp.gain.setValueAtTime(gain * 0.85, time + duration * 0.6)
+    amp.gain.exponentialRampToValueAtTime(0.0001, time + duration)
     osc.connect(filter)
-    filter.connect(gain)
-    gain.connect(this.dry)
-    gain.connect(this.wet)
+    filter.connect(amp)
+    amp.connect(bus)
+    osc.start(time)
+    osc.stop(time + duration + 0.05)
+  }
 
-    osc.start(now)
-    osc.stop(now + 5)
-    this.nodes.push(osc, filter, gain)
+  private playPianoNote(time: number, freq: number, duration: number, gain = 0.07) {
+    const { ctx, bus } = this.ensureContext()
+    const osc1 = ctx.createOscillator()
+    const osc2 = ctx.createOscillator()
+    const mix = ctx.createGain()
+    const amp = ctx.createGain()
+    osc1.type = "triangle"
+    osc2.type = "sine"
+    osc1.frequency.value = freq
+    osc2.frequency.value = freq * 2
+    mix.gain.value = 1
+    amp.gain.setValueAtTime(0.0001, time)
+    amp.gain.linearRampToValueAtTime(gain, time + 0.015)
+    amp.gain.exponentialRampToValueAtTime(0.0001, time + duration)
+    osc1.connect(mix)
+    osc2.connect(mix)
+    mix.connect(amp)
+    amp.connect(bus)
+    osc1.start(time)
+    osc2.start(time)
+    osc1.stop(time + duration + 0.05)
+    osc2.stop(time + duration + 0.05)
+  }
 
-    const delay = 8000 + Math.random() * 14000
-    this.bellTimer = setTimeout(() => this.scheduleBell(), delay)
+  private scheduleBeat(globalBeat: number) {
+    if (!this.running || !this.ctx) return
+    const { ctx } = this.ensureContext()
+    const barBeat = globalBeat % BAR_BEATS
+    const barIndex = Math.floor(globalBeat / BAR_BEATS) % CHORDS.length
+    const chord = CHORDS[barIndex]
+    const time = this.startTime + globalBeat * BEAT_SEC
+
+    // Kick on 1 & 3, softer on 3
+    if (barBeat === 0) this.playKick(time, 0.5)
+    if (barBeat === 2) this.playKick(time, 0.38)
+
+    // Snare on 2 & 4
+    if (barBeat === 1 || barBeat === 3) this.playSnare(time)
+
+    // Hi-hats — eighth-note feel
+    this.playHat(time, barBeat % 2 === 0 ? 0.04 : 0.028)
+    this.playHat(time + BEAT_SEC * 0.5, 0.022)
+
+    // Bass on downbeats
+    if (barBeat === 0 || barBeat === 2) {
+      this.playBass(time, chord.root, BEAT_SEC * 1.9, barBeat === 0 ? 0.22 : 0.16)
+    }
+
+    // Chord stab at start of each bar
+    if (barBeat === 0) {
+      chord.notes.forEach((freq, i) => {
+        this.playPianoNote(time + i * 0.018, freq, BEAT_SEC * 3.2, 0.055)
+      })
+    }
+
+    // Melody on offbeats
+    if (barBeat % 2 === 1) {
+      const melodyIndex = (globalBeat + barIndex) % MELODY.length
+      this.playPianoNote(time, MELODY[melodyIndex], BEAT_SEC * 1.6, 0.05)
+    }
+
+    // Extra sparkle on bar 1 beat 1
+    if (barBeat === 0 && barIndex === 0) {
+      this.playPianoNote(time + BEAT_SEC * 0.5, 783.99, BEAT_SEC * 2, 0.035)
+    }
+  }
+
+  private tick() {
+    if (!this.ctx || !this.running) return
+    const elapsed = this.ctx.currentTime - this.startTime
+    const currentBeat = Math.floor(elapsed / BEAT_SEC)
+    const lookAhead = 0.12
+
+    while (this.beat <= currentBeat + lookAhead / BEAT_SEC) {
+      if (this.beat >= 0) this.scheduleBeat(this.beat)
+      this.beat++
+    }
   }
 
   start() {
-    const { ctx, dry, wet } = this.ensureContext()
+    const { ctx } = this.ensureContext()
     this.stop(false)
     this.running = true
-
-    const reverb = createReverb(ctx)
-    reverb.connect(wet)
-    this.nodes.push(reverb)
-
-    PAD_FREQS.forEach((freq, i) => {
-      const osc1 = ctx.createOscillator()
-      const osc2 = ctx.createOscillator()
-      const gain = ctx.createGain()
-      const filter = ctx.createBiquadFilter()
-      const merger = ctx.createGain()
-
-      osc1.type = "sine"
-      osc2.type = "triangle"
-      osc1.frequency.value = freq
-      osc2.frequency.value = freq * 1.002
-      osc1.detune.value = (i - 2.5) * 4
-      osc2.detune.value = -(i - 2.5) * 3
-
-      filter.type = "lowpass"
-      filter.frequency.value = 1200 + i * 80
-      filter.Q.value = 0.3
-
-      const baseGain = PAD_GAINS[i] ?? 0.02
-      gain.gain.value = baseGain
-
-      osc1.connect(merger)
-      osc2.connect(merger)
-      merger.connect(filter)
-      filter.connect(gain)
-      gain.connect(dry)
-      gain.connect(reverb)
-
-      osc1.start()
-      osc2.start()
-      this.nodes.push(osc1, osc2, merger, filter, gain)
-
-      // Gentle breathing LFO on each layer
-      const lfo = setInterval(() => {
-        if (!ctx || gain.gain.value === 0) return
-        const t = ctx.currentTime
-        gain.gain.cancelScheduledValues(t)
-        gain.gain.setValueAtTime(gain.gain.value, t)
-        gain.gain.linearRampToValueAtTime(
-          baseGain * (0.85 + Math.random() * 0.3),
-          t + 3 + Math.random() * 4
-        )
-      }, 4000 + i * 800)
-      this.lfoIntervals.push(lfo)
-    })
-
-    // Ethereal high shimmer
-    const shimmer = ctx.createOscillator()
-    const shimmerGain = ctx.createGain()
-    const shimmerFilter = ctx.createBiquadFilter()
-    shimmer.type = "sine"
-    shimmer.frequency.value = 2112
-    shimmerFilter.type = "highpass"
-    shimmerFilter.frequency.value = 1800
-    shimmerGain.gain.value = 0.006
-    shimmer.connect(shimmerFilter)
-    shimmerFilter.connect(shimmerGain)
-    shimmerGain.connect(reverb)
-    shimmer.start()
-    this.nodes.push(shimmer, shimmerFilter, shimmerGain)
-
-    this.scheduleBell()
+    this.beat = 0
+    this.startTime = ctx.currentTime + 0.08
+    this.timer = setInterval(() => this.tick(), 25)
     return ctx.resume()
   }
 
@@ -171,35 +224,21 @@ class SpiritualEngine {
 
   stop(fade = true) {
     this.running = false
-    if (this.bellTimer) {
-      clearTimeout(this.bellTimer)
-      this.bellTimer = null
+    if (this.timer) {
+      clearInterval(this.timer)
+      this.timer = null
     }
-    this.lfoIntervals.forEach(clearInterval)
-    this.lfoIntervals = []
-
     if (!this.ctx || !this.master) return
 
-    const disconnect = () => {
-      this.nodes.forEach((node) => {
-        try {
-          if (node instanceof OscillatorNode || node instanceof AudioBufferSourceNode) {
-            node.stop()
-          }
-          node.disconnect()
-        } catch {
-          // already stopped
-        }
-      })
-      this.nodes = []
+    const finish = () => {
+      this.master!.gain.value = 0
     }
 
     if (fade) {
       this.fadeTo(0)
-      setTimeout(disconnect, FADE_MS + 50)
+      setTimeout(finish, FADE_MS + 50)
     } else {
-      disconnect()
-      this.master.gain.value = 0
+      finish()
     }
   }
 
@@ -214,28 +253,28 @@ class SpiritualEngine {
 }
 
 function WaveformBars({ active }: { active: boolean }) {
-  const heights = [3, 7, 5, 9, 4, 8, 6]
+  const heights = [4, 9, 6, 12, 5, 10, 7]
 
   return (
     <div className="flex items-end gap-[3px] h-4" aria-hidden>
       {heights.map((h, i) => (
         <motion.span
           key={i}
-          className="w-[3px] rounded-full bg-gradient-to-t from-cyan-500 to-violet-400"
+          className="w-[3px] rounded-full bg-gradient-to-t from-amber-400 via-cyan-500 to-violet-500"
           animate={
             active
-              ? { height: [h, h + 6, h - 1, h + 4, h] }
+              ? { height: [h, h + 5, h - 2, h + 7, h] }
               : { height: 3 }
           }
           transition={
             active
               ? {
-                  duration: 0.9 + i * 0.08,
+                  duration: 0.47,
                   repeat: Infinity,
                   ease: "easeInOut",
-                  delay: i * 0.07,
+                  delay: i * 0.06,
                 }
-              : { duration: 0.3 }
+              : { duration: 0.25 }
           }
         />
       ))}
@@ -244,14 +283,14 @@ function WaveformBars({ active }: { active: boolean }) {
 }
 
 export function AmbientSoundtrack() {
-  const engineRef = useRef<SpiritualEngine | null>(null)
+  const engineRef = useRef<RhythmicEngine | null>(null)
   const [enabled, setEnabled] = useState(false)
   const [showHint, setShowHint] = useState(false)
   const [hovered, setHovered] = useState(false)
 
   const startPlayback = useCallback(async () => {
     try {
-      if (!engineRef.current) engineRef.current = new SpiritualEngine()
+      if (!engineRef.current) engineRef.current = new RhythmicEngine()
       await engineRef.current.play()
       setEnabled(true)
       setShowHint(false)
@@ -275,7 +314,7 @@ export function AmbientSoundtrack() {
   }, [enabled, startPlayback, stopPlayback])
 
   useEffect(() => {
-    engineRef.current = new SpiritualEngine()
+    engineRef.current = new RhythmicEngine()
     let timer: ReturnType<typeof setTimeout> | undefined
     let started = false
 
@@ -320,9 +359,9 @@ export function AmbientSoundtrack() {
             exit={{ opacity: 0, y: 8, scale: 0.96 }}
             transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
             onClick={startPlayback}
-            className="glass rounded-2xl px-4 py-2.5 text-xs font-medium text-zinc-600 border border-zinc-200/80 shadow-sm hover:text-zinc-900 hover:border-violet-300 transition-colors"
+            className="glass rounded-2xl px-4 py-2.5 text-xs font-medium text-zinc-600 border border-zinc-200/80 shadow-sm hover:text-zinc-900 hover:border-cyan-300 transition-colors"
           >
-            Tap to begin the ambient soundtrack
+            Tap to play the beat
           </motion.button>
         )}
       </AnimatePresence>
@@ -331,21 +370,20 @@ export function AmbientSoundtrack() {
         onClick={toggle}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
-        aria-label={enabled ? "Mute ambient soundtrack" : "Play ambient soundtrack"}
+        aria-label={enabled ? "Mute soundtrack" : "Play soundtrack"}
         aria-pressed={enabled}
-        className="group relative flex items-center gap-3 overflow-hidden rounded-full border border-zinc-200/80 bg-white/75 px-4 py-2.5 shadow-[0_8px_32px_rgba(15,23,42,0.08)] backdrop-blur-xl transition-colors hover:border-violet-300/60 hover:bg-white/90"
+        className="group relative flex items-center gap-3 overflow-hidden rounded-full border border-zinc-200/80 bg-white/80 px-4 py-2.5 shadow-[0_8px_32px_rgba(15,23,42,0.1)] backdrop-blur-xl transition-colors hover:border-cyan-300/70 hover:bg-white/95"
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.97 }}
         layout
       >
-        {/* Active glow ring */}
         <AnimatePresence>
           {enabled && (
             <motion.span
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="pointer-events-none absolute inset-0 rounded-full bg-gradient-to-r from-cyan-400/10 via-violet-400/10 to-fuchsia-400/10"
+              className="pointer-events-none absolute inset-0 rounded-full bg-gradient-to-r from-amber-300/15 via-cyan-400/15 to-violet-400/15"
             />
           )}
         </AnimatePresence>
@@ -365,27 +403,26 @@ export function AmbientSoundtrack() {
               <span
                 className={
                   enabled
-                    ? "bg-gradient-to-r from-cyan-600 to-violet-500 bg-clip-text text-transparent"
+                    ? "bg-gradient-to-r from-amber-500 via-cyan-600 to-violet-500 bg-clip-text text-transparent"
                     : "text-zinc-400"
                 }
               >
-                {enabled ? "Sound On" : "Sound Off"}
+                {enabled ? "Beat On" : "Beat Off"}
               </span>
             </motion.span>
           )}
         </AnimatePresence>
 
-        {/* Status dot */}
         <span
           className={`relative h-2 w-2 shrink-0 rounded-full transition-colors ${
-            enabled ? "bg-violet-500" : "bg-zinc-300"
+            enabled ? "bg-cyan-500" : "bg-zinc-300"
           }`}
         >
           {enabled && (
             <motion.span
-              className="absolute inset-0 rounded-full bg-violet-400"
+              className="absolute inset-0 rounded-full bg-cyan-400"
               animate={{ scale: [1, 1.8, 1], opacity: [0.6, 0, 0.6] }}
-              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+              transition={{ duration: 0.64, repeat: Infinity, ease: "easeInOut" }}
             />
           )}
         </span>
