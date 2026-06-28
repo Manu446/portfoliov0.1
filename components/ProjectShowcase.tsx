@@ -85,7 +85,7 @@ export function ProjectShowcase() {
               projects.map((project, i) => (
                 <Reveal key={project.id} delay={i * 0.08} blur={false}>
                   <a
-                    href={project.githubUrl}
+                    href={project.liveUrl ?? project.githubUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="group relative block border-b border-zinc-200"
