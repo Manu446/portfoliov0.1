@@ -7,7 +7,6 @@ import { ArrowDown, Code2, Camera, Sparkles, ArrowUpRight } from "lucide-react"
 import { MagneticButton } from "@/components/ui/MagneticButton"
 import { Reveal } from "@/components/ui/Reveal"
 import { CountUp } from "@/components/ui/CountUp"
-import { Typewriter } from "@/components/ui/Typewriter"
 import { ProjectShowcase } from "@/components/ProjectShowcase"
 import { Marquee } from "@/components/Marquee"
 
@@ -74,7 +73,8 @@ export default function HomePage() {
   // Smoothed scroll values for buttery parallax
   const smooth = useSpring(scrollYProgress, { stiffness: 80, damping: 24, mass: 0.4 })
   const heroY = useTransform(smooth, [0, 1], [0, 160])
-  const heroOpacity = useTransform(smooth, [0, 0.65], [1, 0])
+  const heroScale = useTransform(smooth, [0, 1], [1, 0.93])
+  const indicatorOpacity = useTransform(smooth, [0, 0.35], [1, 0])
   const imageScale = useTransform(smooth, [0, 1], [1, 1.22])
   const imageY = useTransform(smooth, [0, 1], [0, -110])
   const overlayTextX = useTransform(smooth, [0, 1], [0, -70])
@@ -113,7 +113,7 @@ export default function HomePage() {
 
         <motion.div
           className="max-w-7xl mx-auto px-6 w-full"
-          style={{ y: heroY, opacity: heroOpacity }}
+          style={{ y: heroY, scale: heroScale }}
         >
           <div className="grid lg:grid-cols-[1.05fr_0.95fr] gap-12 lg:gap-16 items-center">
             {/* Left Content */}
@@ -151,23 +151,15 @@ export default function HomePage() {
                 />
               </h1>
 
-              <motion.div
-                className="flex items-center gap-2 mb-6 min-h-[1.75rem] font-mono text-sm md:text-base text-zinc-500"
+              <motion.p
+                className="text-lg md:text-xl font-medium text-zinc-700 mb-5"
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.7, delay: 0.8, ease: EASE }}
               >
-                <span className="text-cyan-600">&gt;</span>
-                <Typewriter
-                  phrases={[
-                    "I build modern web experiences.",
-                    "I craft performant applications.",
-                    "I capture moments through my lens.",
-                    "I turn ideas into products.",
-                  ]}
-                  className="text-zinc-700"
-                />
-              </motion.div>
+                Hi, I&apos;m{" "}
+                <span className="font-bold text-gradient">Immanuel Obure</span>
+              </motion.p>
 
               <motion.p
                 className="text-zinc-600 text-lg md:text-xl leading-relaxed max-w-lg mb-10"
@@ -339,7 +331,7 @@ export default function HomePage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1.6 }}
-          style={{ opacity: heroOpacity }}
+          style={{ opacity: indicatorOpacity }}
         >
           <span className="text-[10px] text-zinc-400 uppercase tracking-[0.3em]">
             Scroll
